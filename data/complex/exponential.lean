@@ -14,22 +14,6 @@ open is_absolute_value
 section
 open real is_absolute_value finset
 
-lemma geo_sum_eq {α : Type*} [field α] {x : α} : ∀ (n : ℕ) (hx1 : x ≠ 1),
-  (range n).sum (λ m, x ^ m) = (1 - x ^ n) / (1 - x)
-| 0     hx1 := by simp
-| (n+1) hx1 := have 1 - x ≠ 0 := mt sub_eq_zero_iff_eq.1 hx1.symm,
-by rw [sum_range_succ, ← mul_div_cancel (x ^ n) this, geo_sum_eq n hx1, ← add_div, _root_.pow_succ];
-    simp [mul_add, add_mul, mul_comm]
-
-lemma geo_sum_inv_eq {α : Type*} [discrete_field α] {x : α} (n : ℕ) (hx1 : x ≠ 1) (hx0 : x ≠ 0) :
-  (range n).sum (λ m, x⁻¹ ^ m) = (x - x * x⁻¹ ^ n) / (x - 1) :=
-have hx1' : x⁻¹ ≠ 1, from λ h, by rw [← @inv_inv' _ _ x, h] at hx1; simpa using hx1,
-have h1x' : 1 - x⁻¹ ≠ 0, from sub_ne_zero.2 hx1'.symm,
-have h1x : x - 1 ≠ 0, from sub_ne_zero.2 hx1,
-by rw [geo_sum_eq _ hx1', div_eq_div_iff h1x' h1x];
-  simp [mul_add, add_mul, mul_inv_cancel hx0, mul_comm x, mul_left_comm x,
-    mul_assoc, inv_mul_cancel hx0]
-
 lemma forall_ge_le_of_forall_le_succ {α : Type*} [preorder α] (f : ℕ → α) {m : ℕ}
   (h : ∀ n ≥ m, f n.succ ≤ f n) : ∀ {l}, ∀ k ≥ m, k ≤ l → f l ≤ f k :=
 begin
