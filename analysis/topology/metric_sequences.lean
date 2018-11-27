@@ -6,7 +6,7 @@ Authors: Rohan Mitta, Patrick Massot
 --When exercise/lemma/prop numbers are quoted here, the material comes from 
 --"Metric Spaces and Topology" by Sutherland
 
-import analysis.metric_space
+import analysis.metric_space data.real.cau_seq_filter
 
 noncomputable theory
 local attribute [instance] classical.prop_decidable 
@@ -16,125 +16,63 @@ open filter
 
 lemma tendsto_nhds_iff (u : β → α) (f : filter β) (a : α) : tendsto u f (nhds a) ↔
   ∀ ε > 0, ∃ s ∈ f.sets, ∀ {n}, n ∈ s → dist (u n) a < ε :=
-⟨λ H ε εpos, ⟨u ⁻¹' ball a ε, ⟨H $ ball_mem_nhds a εpos, λ n h, h⟩⟩,
- λ H s s_nhd, let ⟨ε, εpos, sub⟩ := mem_nhds_iff_metric.1 s_nhd in
-   let ⟨N, ⟨N_in, H'⟩⟩ := H ε εpos in f.sets_of_superset N_in (λ b b_in, sub $ H' b_in)⟩
-
+tendsto_nhds_topo_metric
 
 lemma seq_tendsto_iff (u : ℕ → α) (a : α) : tendsto u at_top (nhds a) ↔
   ∀ ε > 0, ∃ (N : ℕ), ∀ {n}, n ≥ N → dist (u n) a < ε :=
-⟨λ H ε εpos, mem_at_top_sets.1 $ mem_map.2 $ H (ball_mem_nhds _ εpos),
- λ H s s_nhd, let ⟨ε, εpos, sub⟩ := mem_nhds_iff_metric.1 s_nhd in
-   let ⟨N, H'⟩ := H ε εpos in mem_at_top_sets.2 ⟨N, λ n nN,
-   sub $ mem_ball.2 $ H' nN⟩⟩
+tendsto_at_top_metric u
+
+private lemma one_div_succ {n : ℕ} : (1 : ℝ) / (nat.succ n) > 0 :=
+one_div_pos_of_pos (iff.mpr nat.cast_pos (nat.zero_lt_succ n))
 
 --Exercise 6.26 (as setup for prop 17.6)
 theorem lim_sequence_of_mem_closure {Y : set α} {a : α} (H : a ∈ closure Y) :
 ∃ (f : ℕ → α) (H1 : ∀ (n : ℕ), f n ∈ Y), filter.tendsto f at_top (nhds a)  := 
 begin
-  let ball_n := λ (n : ℕ), ball a ((1 : ℝ)/n),  
-  have H1 : ∀ (n : ℕ), nonempty {x : α | x ∈ (ball_n (n+1)) ∩ Y},
-  { intro n,
-    apply @nonempty_of_exists _ (λ _,true),
-    have H3 := set.exists_mem_of_ne_empty ((mem_closure_iff_nhds.1 H) (ball_n (n+1)) (ball_mem_nhds _ _)),
-    { cases H3 with xn Hxn,
-      existsi (⟨xn, Hxn⟩ : ↥{x : α | x ∈ ball_n (n+1) ∩ Y}),
-      trivial },
-    apply div_pos, exact zero_lt_one, rw ← nat.cast_zero, apply nat.cast_lt.2,
-    apply zero_lt_iff_ne_zero.2, apply nat.succ_ne_zero },
-  
-  have sequence := λ (n : ℕ), classical.choice (H1 n),
-  let sequencevals := λ (n : ℕ), (sequence n).val,
-  existsi sequencevals,
-
-  have H1 : ∀ (n : ℕ), sequencevals n ∈ Y,
-  { show ∀ (n : ℕ), (sequence n).val ∈ Y,
-    let sequenceprops := λ (n : ℕ), ((sequence n).property).2,
-    exact sequenceprops },
-  existsi H1,
-  rw tendsto_nhds_iff _ _ _,
-  intros ep Hep,
-  let nat_one_over_ep := int.nat_abs (ceil (1/ep)),
-  existsi [{n : ℕ | nat_one_over_ep ≤ n}, _], swap,
-  { rw filter.mem_at_top_sets,
-    existsi nat_one_over_ep,
-    exact λ b Hb, Hb }, 
-
-  intros n Hn,
-  show dist (sequence n).val a < ep,
-    
-  have : dist (sequence n).val a < (1 / ↑(n+1)) := (sequence n).property.1,
-  apply lt.trans this,
-  rw one_div_eq_inv,
-  
-  have H3: 0 < (↑(n + 1) : ℝ), 
-  { rw ← nat.cast_zero,
-    rw (@nat.cast_lt ℝ _ 0 (n+1)),
-    exact zero_lt_iff_ne_zero.2 (nat.succ_ne_zero n) },
-  rw (@inv_lt ℝ _ ↑(n + 1) ep) H3 Hep,
-  dsimp at Hn, rw ← one_div_eq_inv,
-  have H4 := nat.lt_succ_of_le Hn,
-  rw [nat.succ_eq_add_one, ← @nat.cast_lt ℝ _ nat_one_over_ep (n+1)] at H4,
-  exact lt_of_le_of_lt (le_trans (le_ceil (1 / ep)) ((@int.cast_le ℝ _ _ _).2 (@int.le_nat_abs ⌈1 / ep⌉))) H4,  
+  let ε := λ (n : ℕ), (1 : ℝ) / (n + 1),
+  have g : Π (n : ℕ), {b : α // ∃ (h : b ∈ Y), dist a b < ε n},
+    intro n,
+    apply classical.indefinite_description,
+    apply iff.mp mem_closure_iff' H,
+    exact one_div_succ,
+  constructor,
+  constructor,
+    intro n,
+    cases (g n).property with h1 h2,
+    exact h1,
+  apply iff.mpr tendsto_iff_dist_tendsto_zero,
+  apply squeeze_zero,
+      intro n,
+      exact dist_nonneg,
+    intro n,
+    show dist (g n).val a ≤ ε n,
+    rewrite dist_comm,
+    cases (g n).property with h1 h2,
+    exact le_of_lt h2,
+  exact sequentially_complete.tendsto_div,
 end
 
-def metric_space.seq_cauchy (u : ℕ → α) : Prop := cauchy (filter.map u at_top)
+def metric_space.seq_cauchy (u : ℕ → α) : Prop := cauchy_seq u
 
 lemma metric_space.seq_cauchy_of_mathematician (u : ℕ → α) : 
 metric_space.seq_cauchy u ↔ ∀ ε > 0, ∃ (N : ℕ), ∀ {n m}, n ≥ N → m ≥ N → dist (u n) (u m) < ε :=
+have (∀ε>0, ∃N, ∀m n≥N, dist (u n) (u m) < ε) ↔ (∀ε>0, ∃N, ∀n m≥N, dist (u n) (u m) < ε), from
 begin
-  split, 
-  { intros H ε Hε,
-    unfold metric_space.seq_cauchy at H,
-    rw cauchy_of_metric at H,
-    rcases H.2 ε Hε with ⟨t, Ht, Ht2⟩,
-    rw [mem_map, mem_at_top_sets] at Ht,
-    cases Ht with N HN,
-    existsi N,
-    intros n m Hn Hm,
-    exact Ht2 (u n) (u m) (HN n Hn) (HN m Hm) },
-  intro H,
-  unfold metric_space.seq_cauchy, rw cauchy_of_metric,
-  apply and.intro _,
-  { intros ε Hε,
-    cases H ε Hε with N HN,
-    existsi u '' {x : ℕ | N ≤ x},
-    existsi _, swap, 
-    { rw [mem_map, mem_at_top_sets], existsi N, intros b Hb, rw [set.mem_set_of_eq, set.mem_image], 
-    existsi b, exact ⟨Hb, rfl⟩ },
-    intros x y Hx Hy,
-    rw set.mem_image at Hx,
-    rw set.mem_image at Hy,
-    cases Hx with n Hn,
-    cases Hy with m Hm,
-    have := HN Hn.1 Hm.1, rw Hn.2 at this, rw Hm.2 at this,
-    assumption },
-  exact map_ne_bot at_top_ne_bot,
-end
+  apply iff.intro;
+  intros h ε hε;
+  cases h ε hε with N hN;
+  existsi N;
+  intros m n hm hn;
+  exact hN n m hn hm
+end,
+iff.trans cauchy_seq_metric this
 
 def metric_space.seq_tendsto (u : ℕ → α) (a : α) : Prop :=
 ∀ ε > 0, ∃ (N : ℕ), ∀ {n}, n ≥ N → dist (u n) a < ε
 
 lemma metric_space.unique_limit_seq (u : ℕ → α) (a b : α)  
   (Ha : metric_space.seq_tendsto u a) (Hb : metric_space.seq_tendsto u b) : a = b := 
-begin
-  unfold metric_space.seq_tendsto at Ha,
-  unfold metric_space.seq_tendsto at Hb,
-  apply metric_space.eq_of_dist_eq_zero,
-  by_contradiction Hnab,
-  cases @dist_nonneg _ _ a b, swap, cc,
-  cases Ha ((dist a b)/2) (div_pos h (by norm_num)) with N Ha1,
-  cases Hb ((dist a b)/2) (div_pos h (by norm_num)) with M Hb1,
-  let k := max N M,
-  have Ha2 : dist (u k) a < dist a b / 2:= Ha1 (le_max_left N M), 
-  have Hb2 : dist (u k) b < dist a b / 2:= Hb1 (le_max_right N M),
-  rw dist_comm at Ha2,
-  have := add_lt_add Ha2 Hb2,
-  have this2 := dist_triangle a (u k) b,
-  have this3 := lt_of_le_of_lt this2 this,
-  rw [← two_mul, mul_div_cancel' (dist a b) two_ne_zero] at this3,
-  exact lt_irrefl (dist a b) this3,
-end
+tendsto_nhds_unique at_top_ne_bot (iff.mpr (tendsto_at_top_metric u) Ha) (iff.mpr (tendsto_at_top_metric u) Hb)
 
 lemma metric_space.cauchy_of_convergent (u : ℕ → α) (H : ∃ (a : α), metric_space.seq_tendsto u a) : 
   metric_space.seq_cauchy u := 
