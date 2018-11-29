@@ -47,6 +47,46 @@ def iteration_map {α : Type*} (f : α → α) (start : α) : ℕ → α
 | zero := start
 | (succ x) := f (iteration_map x)
 
+lemma preimage_univ_iff_range_subset {α β : Type*} {f : α → β} {s : set β} :
+  set.preimage f s = set.univ ↔ ∀ a : α, f a ∈ s :=
+begin
+  apply iff.trans (iff.symm set.univ_subset_iff),
+  refine iff.trans _ set.range_subset_iff,
+  rewrite ←set.image_univ,
+  exact iff.symm set.image_subset_iff,
+end
+
+lemma fixed_point_iff_iteration_limit {α : Type*} [topological_space α] [t2_space α] {f : α → α} (hf : continuous f) :
+  ∀ {p : α}, f p = p ↔ ∃ p₀ : α, tendsto (iteration_map f p₀) at_top (nhds p) :=
+begin
+  intro p,
+  split,
+  { intro hp,
+    existsi p,
+    rewrite tendsto_def,
+    intros s hs,
+    suffices h : set.preimage (iteration_map f p) s = set.univ,
+      rewrite h,
+      exact univ_mem_sets,
+    apply iff.mpr preimage_univ_iff_range_subset,
+    intro n,
+    suffices h : iteration_map f p n = p,
+      rewrite h,
+      exact mem_of_nhds hs,
+    induction n with n ih,
+      refl,
+    have h : iteration_map f p (succ n) = f (iteration_map f p n),
+      refl,
+    rewrite [h, ih],
+    exact hp },
+  { intro hp,
+    cases hp with p₀ hp,
+    apply @tendsto_nhds_unique α ℕ _ _ (f ∘ iteration_map f p₀) at_top (f p) p,
+    { exact at_top_ne_bot },
+    { exact tendsto.comp hp (continuous.tendsto hf p) },
+    { exact tendsto_succ α (iteration_map f p₀) (nhds p) hp } },
+end
+
 --Definition 17.24
 def is_contraction {α : Type*} [metric_space α] (f : α → α) := 
 ∃ (k : ℝ) (H1 : k < 1) (H2 : 0 < k), ∀ (x y : α), dist (f x) (f y) ≤ k* (dist x y)
@@ -154,21 +194,8 @@ begin
   existsi p,
 
   have f_cont : continuous f := uniform_continuous.continuous (uniform_continuous_of_contraction f H'),
-  let next_seq := f ∘ seq,
-  have Hnext_seq_tendsto_fp : filter.tendsto next_seq filter.at_top (nhds (f p)) 
-      := filter.tendsto.comp Hseq_tendsto_p (continuous.tendsto f_cont p),
-  
-  have Hnext_seq_eq_seqsucc : next_seq = (λ n, seq (n + 1)),
-  { apply funext, intro x, refl },
-  
-  have Hnext_seq_tendsto_p : filter.tendsto next_seq filter.at_top (nhds p),
-  { rw Hnext_seq_eq_seqsucc,
-    exact tendsto_succ _ _ _ Hseq_tendsto_p },
-
-  exact metric_space.unique_limit_seq next_seq (f p) p 
-      ((seq_tendsto_iff next_seq (f p)).1 Hnext_seq_tendsto_fp)
-      ((seq_tendsto_iff next_seq p).1 Hnext_seq_tendsto_p),
-
+  apply iff.mpr (fixed_point_iff_iteration_limit f_cont),
+  exact exists.intro start Hseq_tendsto_p,
 end
 
 def Banach's_fixed_point {α : Type*} [metric_space α] [complete_space α] (H1 : nonempty α) {f : α → α} (H : is_contraction f)
