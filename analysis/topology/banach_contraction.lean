@@ -87,9 +87,40 @@ begin
     { exact tendsto_succ α (iteration_map f p₀) (nhds p) hp } },
 end
 
+def lipschitz {α : Type*} [metric_space α] (K : ℝ) (f : α → α) := ∀ (x y : α), dist (f x) (f y) ≤ K * (dist x y)
+
+lemma palais_inequality {α : Type*} [metric_space α] {f : α → α} {K : ℝ} (hK : K < 1) (hf : lipschitz K f) :
+  ∀ (x y : α), dist x y ≤ (dist x (f x) + dist y (f y)) / (1 - K) :=
+begin
+  intros x y,
+  apply le_div_of_mul_le (sub_pos_of_lt hK),
+  rewrite [mul_comm, sub_mul, one_mul],
+  apply sub_left_le_of_le_add,
+  apply le_trans,
+    exact dist_triangle_right x y (f x),
+  apply le_trans,
+    apply add_le_add_left,
+    exact dist_triangle_right y (f x) (f y),
+  rewrite [←add_assoc, add_comm],
+  apply add_le_add_right,
+  exact hf x y,
+end
+
+theorem fixed_point_unique {α : Type*} [metric_space α] {f : α → α} {K : ℝ} (hK : K < 1) (hf : lipschitz K f) :
+  ∀ p : α, p = f p → ∀ p' : α, p' = f p' → p = p' :=
+begin
+  intros p hp p' hp',
+  apply iff.mp dist_le_zero,
+  apply le_trans,
+  exact palais_inequality hK hf p p',
+  rewrite iff.mpr dist_eq_zero hp,
+  rewrite iff.mpr dist_eq_zero hp',
+  simp,
+end
+
 --Definition 17.24
 def is_contraction {α : Type*} [metric_space α] (f : α → α) := 
-∃ (k : ℝ) (H1 : k < 1) (H2 : 0 < k), ∀ (x y : α), dist (f x) (f y) ≤ k* (dist x y)
+∃ (K : ℝ) (H1 : K < 1) (H2 : 0 < K), lipschitz K f
 
 --Lemma 17.25
 lemma uniform_continuous_of_contraction {α : Type*} [metric_space α] (f : α → α) 
@@ -210,9 +241,7 @@ begin
   intros y Hy,
   by_contra Hnot,
   let p := Banach's_fixed_point H1 H,
-  have H4 := @dist_nonneg _ _ p y,
-  have H3 : 0 < dist p y, exact or.elim H4 (λ x, x) (λ m, by_contradiction 
-    (λ o, Hnot (eq_of_dist_eq_zero (eq.symm (eq.trans m (dist_comm p y)))))),
+  have H3 : 0 < dist p y, from iff.mpr dist_pos (λ h, Hnot (eq.symm h)),
   let H' := H,
   rcases H with ⟨K,HK1,_,Hf⟩, 
   have := Hf p y, rw [Hy, (Banach's_fixed_point_is_fixed_point H1 H')] at this,
