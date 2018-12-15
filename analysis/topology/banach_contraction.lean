@@ -187,7 +187,7 @@ section prod
     (λ h, let ⟨t₁, ht₁, t₂, ht₂, hs⟩ := mem_prod_iff.mp h in
       let ⟨N₁, hN₁⟩ := iff.mp mem_at_top_sets ht₁ in
       let ⟨N₂, hN₂⟩ := iff.mp mem_at_top_sets ht₂ in
-      mem_at_top_sets.mpr ⟨⟨N₁, N₂⟩, λ n hn, hs ⟨hN₁ n.1 hn.1, hN₂ n.2 hn.2⟩⟩)
+      mem_at_top_sets.mpr ⟨⟨N₁, N₂⟩, (λ n hn, hs ⟨hN₁ n.1 hn.1, hN₂ n.2 hn.2⟩)⟩)
     (λ h, let ⟨N, hN⟩ := mem_at_top_sets.mp h in mem_prod_iff.mpr
       ⟨{n₁ : α | N.1 ≤ n₁}, mem_at_top N.1, {n₂ : β | N.2 ≤ n₂}, mem_at_top N.2, (λ n hn, hN n hn)⟩))
 
@@ -238,12 +238,12 @@ section prod
       exact ht', },
   end
 
-  lemma tendsto_dist_bound_at_top_nhds_0_of_contraction {α : Type*} [metric_space α] {K : ℝ} {f : α → α} :
-    0 ≤ K → K < 1 → ∀ (p₀ : α), tendsto (λ (n : ℕ × ℕ), (K ^n.1 + K ^n.2) * dist p₀ (f p₀) / (1 - K)) at_top (nhds 0) :=
+  lemma tendsto_dist_bound_at_top_nhds_0 {K : ℝ} :
+    0 ≤ K → K < 1 → ∀ (x : ℝ), tendsto (λ (n : ℕ × ℕ), (K ^n.1 + K ^n.2) * x / (1 - K)) at_top (nhds 0) :=
   begin
-    intros hK₀ hK₁ p₀,
+    intros hK₀ hK₁ x,
     let g₁ := λ (n : ℕ × ℕ), (K ^n.1, K ^n.2),
-    let g₂ := λ (y : ℝ × ℝ), (y.1 + y.2) * dist p₀ (f p₀) / (1 - K),
+    let g₂ := λ (y : ℝ × ℝ), (y.1 + y.2) * x / (1 - K),
     show tendsto (g₂ ∘ g₁) at_top (nhds 0),
     apply tendsto.comp,
     { show tendsto g₁ at_top (nhds (0, 0)),
@@ -254,7 +254,7 @@ section prod
       { apply tendsto.comp tendsto_snd,
         exact tendsto_pow_at_top_nhds_0_of_lt_1 hK₀ hK₁, }, },
     { show tendsto g₂ (nhds (0, 0)) (nhds 0),
-      have hg₂ : g₂ = λ (y : ℝ × ℝ), dist p₀ (f p₀) / (1 - K) * (y.1 + y.2),
+      have hg₂ : g₂ = λ (y : ℝ × ℝ), x / (1 - K) * (y.1 + y.2),
         ext,
         rewrite [mul_comm, ←mul_div_assoc],
       have hc : continuous g₂,
@@ -287,7 +287,7 @@ begin
   { intro p,
     exact dist_nonneg, },
   { exact dist_bound_of_contraction hK₀ hK₁ hf p₀, },
-  { exact tendsto_dist_bound_at_top_nhds_0_of_contraction hK₀ hK₁ p₀, },
+  { exact tendsto_dist_bound_at_top_nhds_0 hK₀ hK₁ (dist p₀ (f p₀)), },
 end
 
 --Banach's Fixed Point Theorem (Exists Statement)
