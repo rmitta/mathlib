@@ -206,37 +206,19 @@ section prod
     { rewrite prod.map_snd, },
   end
 
-  lemma cauchy_seq_iff' {α β : Type*} [metric_space α] [inhabited β] [semilattice_sup β] {u : β → α} :
-    cauchy_seq u ↔ tendsto (λ (n : β × β), dist (u n.1) (u n.2)) at_top (nhds 0) :=
-  begin
-    apply iff.trans cauchy_seq_iff,
-    rewrite tendsto_nhds_topo_metric,
-    split,
-    { intros h ε hε,
-      have hε' : {p : α × α | dist p.1 p.2 < ε} ∈ (map (prod.map u u) at_top).sets,
-        apply h,
-        exact dist_mem_uniformity hε,
-      rcases iff.mp mem_map_sets_iff hε' with ⟨s, hs, hs'⟩,
-      refine ⟨s, hs, _⟩,
-      intros n hn,
-      rewrite [real.dist_0_eq_abs, abs_of_nonneg dist_nonneg],
-      rewrite [←prod.map_fst u u, ←prod.map_snd u u],
-      apply hs',
-      exact set.mem_image_of_mem (prod.map u u) hn, },
-    { intros h s hs,
-      rcases iff.mp mem_uniformity_dist hs with ⟨ε, hε, hε'⟩,
-      rcases h ε hε with ⟨t, ht, ht'⟩,
-      rewrite mem_map_sets_iff,
-      refine ⟨t, ht, _⟩,
-      intros p hp,
-      rewrite ←@prod.mk.eta α α p,
-      apply hε',
-      rcases hp with ⟨n, hn, hn'⟩,
-      specialize ht' n hn,
-      rewrite [real.dist_0_eq_abs, abs_of_nonneg dist_nonneg] at ht',
-      rewrite [←hn', prod.map_fst, prod.map_snd],
-      exact ht', },
-  end
+  lemma prod_dist_eq {α β : Type*} [metric_space α] (u : β → α) (n : β × β) :
+    dist (dist (u n.1) (u n.2)) 0 = dist (prod.map u u n).1 (prod.map u u n).2 :=
+  by rw [prod.map_fst, prod.map_snd, real.dist_0_eq_abs, abs_of_nonneg dist_nonneg]
+
+  lemma cauchy_seq_iff' {α β : Type*} [metric_space α] [inhabited β] [semilattice_sup β]
+    {u : β → α} : cauchy_seq u ↔ tendsto (λ (n : β × β), dist (u n.1) (u n.2)) at_top (nhds 0) :=
+  iff.trans cauchy_seq_iff (iff.symm (iff.trans tendsto_nhds_topo_metric
+    ⟨(λ h s hs, let ⟨ε, hε, hε'⟩ := iff.mp mem_uniformity_dist hs in
+       let ⟨t, ht, ht'⟩ := h ε hε in mem_map_sets_iff.mpr
+       ⟨t, ht, (λ p hp, @prod.mk.eta α α p ▸ hε' (let ⟨n, hn, hn'⟩ := hp in
+         show dist p.1 p.2 < ε, from hn' ▸ prod_dist_eq u n ▸ ht' n hn))⟩),
+     (λ h ε hε, let ⟨s, hs, hs'⟩ := mem_map_sets_iff.mp (h (dist_mem_uniformity hε)) in
+       ⟨s, hs, (λ n hn, symm (prod_dist_eq u n) ▸ hs' (set.mem_image_of_mem (prod.map u u) hn))⟩)⟩))
 
   lemma tendsto_dist_bound_at_top_nhds_0 {K : ℝ} :
     0 ≤ K → K < 1 → ∀ (x : ℝ), tendsto (λ (n : ℕ × ℕ), (K ^n.1 + K ^n.2) * x / (1 - K)) at_top (nhds 0) :=
