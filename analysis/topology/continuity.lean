@@ -717,6 +717,18 @@ instance [second_countable_topology α] [second_countable_topology β] :
     by rw [this]; exact (countable_bUnion ha₁ $ assume u hu, countable_bUnion hb₁ $ by simp),
     by rw [ha₅, hb₅, prod_generate_from_generate_from_eq ha₄ hb₄]⟩⟩
 
+lemma continuous_prod_fst {f : α × β → γ} {b : β} (hf : continuous f) :
+  continuous (λ a, f (a, b)) :=
+λ s hs, subset_interior_iff_open.mp (λ a hm,
+  let ⟨u, v, hu, hv, ha, hb, hp⟩ := is_open_prod_iff.mp (hf s hs) a b hm in
+  mem_interior.mpr ⟨u, (λ a' ha', hp (mk_mem_prod ha' hb)), hu, ha⟩)
+
+lemma continuous_prod_snd {f : α × β → γ} {a : α} (hf : continuous f) :
+  continuous (λ b, f (a, b)) :=
+λ s hs, subset_interior_iff_open.mp (λ b hm,
+  let ⟨u, v, hu, hv, ha, hb, hp⟩ := is_open_prod_iff.mp (hf s hs) a b hm in
+  mem_interior.mpr ⟨v, (λ b' hb', hp (mk_mem_prod ha hb')), hv, hb⟩)
+
 end prod
 
 section compact_and_proper_spaces
